@@ -9,9 +9,9 @@ package postpone
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/joshlf13/errlist"
 	"io"
-	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -88,10 +88,6 @@ func (p *postpone) Read(buf []byte) (int, error) {
 		return 0, p.err
 	}
 	i, err := p.rs.Read(buf)
-	fmt.Println(err == io.EOF)
-	fmt.Println(io.EOF == errlist.NewError(err).Err())
-	err = errlist.NewError(err).AddError(p.err).Err()
-	fmt.Println(err == io.EOF)
 	return i, errlist.NewError(err).AddError(p.err).Err()
 }
 

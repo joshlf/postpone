@@ -57,16 +57,16 @@ func NewFilePre(file string) *Postpone {
 
 // NewFunc takes a function which returns an io.ReadSeeker.
 // This is so the given resource doesn't have to be
-// opened until it is needed. Upon the first loaded
-// or Seek call, r is called, the resultant loadedSeeker
+// opened until it is needed. Upon the first Read
+// or Seek call, r is called, the resultant ReadSeeker
 // is stored, and r is discarded.
 func NewFunc(r func() (io.ReadSeeker, error)) *Postpone {
 	return &Postpone{nil, nil, nil, r, nil, false, false}
 }
 
 // NewFuncPre is identical to NewFunc except it takes
-// a reader rather than a loadedSeeker, and upon the first 
-// loaded or Seek call, it not only retreives the reader, 
+// a reader rather than a ReadSeeker, and upon the first 
+// Read or Seek call, it not only retreives the reader, 
 // it also preloads all of the data from the reader into 
 // an internal buffer, and discards the reader.
 func NewFuncPre(r func() (io.Reader, error)) *Postpone {
@@ -74,7 +74,7 @@ func NewFuncPre(r func() (io.Reader, error)) *Postpone {
 }
 
 // NewReader takes an io.Reader and, upon the first
-// call to loaded or Seek, preloads all available data
+// call to Read or Seek, preloads all available data
 // into an internal buffer, and discards the reader
 func NewReader(r io.Reader) *Postpone {
 	return &Postpone{r, nil, nil, nil, nil, false, false}

@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"github.com/joshlf13/errlist"
 	"io"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -87,6 +88,7 @@ func (p *postpone) Read(buf []byte) (int, error) {
 		return 0, p.err
 	}
 	i, err := p.rs.Read(buf)
+	fmt.Println(err)
 	return i, errlist.NewError(err).AddError(p.err).Err()
 }
 

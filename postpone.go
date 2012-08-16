@@ -27,8 +27,8 @@ type Postpone struct {
 	bad    bool
 }
 
-// NewFile takes a filepath, and returns an io.ReadSeeker.
-// This ReadSeeker will wait to open the file until the
+// NewFile takes a filepath, and returns a *Postpone.
+// This *Postpone will wait to open the file until the
 // first call to either Read or Seek.
 func NewFile(file string) *Postpone {
 	return NewFunc(func() (io.ReadSeeker, error) {
@@ -40,8 +40,8 @@ func NewFile(file string) *Postpone {
 	}, false)
 }
 
-// NewFilePre takes a filepath, and returns an io.ReadSeeker.
-// This ReadSeeker will wait to open the file until the
+// NewFilePre takes a filepath, and returns a *Postpone.
+// This *Postpone will wait to open the file until the
 // first call to either Read or Seek. Upon this first call,
 // the entire contents of file, or as much as is available,
 // will be read into an internal buffer, and the file
@@ -56,11 +56,15 @@ func NewFilePre(file string) *Postpone {
 	}, true)
 }
 
-// NewFunc takes a function which returns an io.ReadSeeker.
-// This is so the given resource doesn't have to be
-// opened until it is needed. Upon the first Read
-// or Seek call, r is called, the resultant ReadSeeker
-// is stored, and r is discarded.
+// NewFunc takes a function, r. This function returns an
+// io.ReadSeeker and an error. If it was not possible
+// to generate an io.ReadSeeker (for example, due to 
+// a failed file open), this function should return nil, 
+// and any relevant error.
+//
+// r will not be called until the first Read or Seek
+// call, which avoids opening the resource until it is
+// actually needed.
 //
 // If r returns an io.Closer, c optionally tells
 // the reader to close the io.Closer once it's been
@@ -69,11 +73,11 @@ func NewFunc(r func() (io.ReadSeeker, error), c bool) *Postpone {
 	return &Postpone{nil, nil, nil, r, nil, false, c, false}
 }
 
-// NewFuncPre is identical to NewFunc except it takes
-// a reader rather than a ReadSeeker, and upon the first 
-// Read or Seek call, it not only retreives the reader, 
-// it also preloads all of the data from the reader into 
-// an internal buffer, and discards the reader.
+// NewFuncPre is identical to NewFunc except its input
+// function returns a Reader rather than a ReadSeeker.
+// Upon the first Read or Seek call to the resultant
+// *Postpone, the *Postpone preloads all of the data
+// from the reader into an internal buffer.
 //
 // If r returns an io.Closer, c optionally tells
 // the reader to close the io.Closer once it's been
@@ -84,7 +88,7 @@ func NewFuncPre(r func() (io.Reader, error), c bool) *Postpone {
 
 // NewReader takes an io.Reader and, upon the first
 // call to Read or Seek, preloads all available data
-// into an internal buffer, and discards the reader
+// into an internal buffer.
 //
 // If r is an io.Closer, c optionally tells
 // the reader to close r once it's been read from.

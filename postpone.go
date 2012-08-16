@@ -15,7 +15,8 @@ import (
 	"os"
 )
 
-type postpone struct {
+// Postpone fulfills the io.ReadSeeker interface.
+type Postpone struct {
 	r      io.Reader
 	rs     io.ReadSeeker
 	getr   func() (io.Reader, error)
@@ -28,7 +29,7 @@ type postpone struct {
 // NewFile takes a filepath, and returns an io.ReadSeeker.
 // This ReadSeeker will wait to open the file until the
 // first call to either Read or Seek.
-func NewFile(file string) io.ReadSeeker {
+func NewFile(file string) *Postpone {
 	return NewFunc(func() (io.ReadSeeker, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -44,7 +45,7 @@ func NewFile(file string) io.ReadSeeker {
 // the entire contents of file, or as much as is available,
 // will be read into an internal buffer, and the file
 // will be closed.
-func NewFilePre(file string) io.ReadSeeker {
+func NewFilePre(file string) *Postpone {
 	return NewFuncPre(func() (io.Reader, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -59,8 +60,8 @@ func NewFilePre(file string) io.ReadSeeker {
 // opened until it is needed. Upon the first loaded
 // or Seek call, r is called, the resultant loadedSeeker
 // is stored, and r is discarded.
-func NewFunc(r func() (io.ReadSeeker, error)) io.ReadSeeker {
-	return &postpone{nil, nil, nil, r, nil, false, false}
+func NewFunc(r func() (io.ReadSeeker, error)) *Postpone {
+	return &Postpone{nil, nil, nil, r, nil, false, false}
 }
 
 // NewFuncPre is identical to NewFunc except it takes
@@ -68,18 +69,31 @@ func NewFunc(r func() (io.ReadSeeker, error)) io.ReadSeeker {
 // loaded or Seek call, it not only retreives the reader, 
 // it also preloads all of the data from the reader into 
 // an internal buffer, and discards the reader.
-func NewFuncPre(r func() (io.Reader, error)) io.ReadSeeker {
-	return &postpone{nil, nil, r, nil, nil, false, false}
+func NewFuncPre(r func() (io.Reader, error)) *Postpone {
+	return &Postpone{nil, nil, r, nil, nil, false, false}
 }
 
 // NewReader takes an io.Reader and, upon the first
 // call to loaded or Seek, preloads all available data
 // into an internal buffer, and discards the reader
-func NewReader(r io.Reader) io.ReadSeeker {
-	return &postpone{r, nil, nil, nil, nil, false, false}
+func NewReader(r io.Reader) *Postpone {
+	return &Postpone{r, nil, nil, nil, nil, false, false}
 }
 
-func (p *postpone) Read(buf []byte) (int, error) {
+// Load performs the same operation which would
+// normally be performed during the first call
+// to Read or Seek
+func (p *Postpone) Load() {
+	p.retreive()
+}
+
+// Loaded returns whether or not Load, Read,
+// or Seek has been called yet.
+func (p *Postpone) Loaded() bool {
+	return p.loaded
+}
+
+func (p *Postpone) Read(buf []byte) (int, error) {
 	if !p.loaded {
 		p.retreive()
 	}
@@ -90,7 +104,7 @@ func (p *postpone) Read(buf []byte) (int, error) {
 	return i, errlist.NewError(err).AddError(p.err).Err()
 }
 
-func (p *postpone) Seek(offset int64, whence int) (int64, error) {
+func (p *Postpone) Seek(offset int64, whence int) (int64, error) {
 	if !p.loaded {
 		p.retreive()
 	}
@@ -101,7 +115,7 @@ func (p *postpone) Seek(offset int64, whence int) (int64, error) {
 	return i, errlist.NewError(err).AddError(p.err).Err()
 }
 
-func (p *postpone) retreive() {
+func (p *Postpone) retreive() {
 	if p.getr != nil {
 		var r io.Reader
 		r, p.err = p.getr()

@@ -89,7 +89,7 @@ func (p *postpone) Read(buf []byte) (int, error) {
 	}
 	i, err := p.rs.Read(buf)
 	err = errlist.NewError(err).AddError(p.err).Err()
-	fmt.Printf("Error: %s\n",err)
+	fmt.Println(err)
 	return i, errlist.NewError(err).AddError(p.err).Err()
 }
 

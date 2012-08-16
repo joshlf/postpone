@@ -9,7 +9,6 @@ package postpone
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/joshlf13/errlist"
 	"io"
 	"io/ioutil"

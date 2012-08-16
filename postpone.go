@@ -23,20 +23,21 @@ type Postpone struct {
 	getrs  func() (io.ReadSeeker, error)
 	err    error
 	loaded bool
+	c      bool
 	bad    bool
 }
 
 // NewFile takes a filepath, and returns an io.ReadSeeker.
 // This ReadSeeker will wait to open the file until the
 // first call to either Read or Seek.
-func NewFile(file string) *Postpone {
+func NewFile(file string, close bool) *Postpone {
 	return NewFunc(func() (io.ReadSeeker, error) {
 		f, err := os.Open(file)
 		if err != nil {
 			return nil, err
 		}
 		return f, nil
-	})
+	}, false)
 }
 
 // NewFilePre takes a filepath, and returns an io.ReadSeeker.
@@ -52,7 +53,7 @@ func NewFilePre(file string) *Postpone {
 			return nil, err
 		}
 		return f, nil
-	})
+	}, true)
 }
 
 // NewFunc takes a function which returns an io.ReadSeeker.
@@ -60,8 +61,12 @@ func NewFilePre(file string) *Postpone {
 // opened until it is needed. Upon the first Read
 // or Seek call, r is called, the resultant ReadSeeker
 // is stored, and r is discarded.
-func NewFunc(r func() (io.ReadSeeker, error)) *Postpone {
-	return &Postpone{nil, nil, nil, r, nil, false, false}
+//
+// If r returns an io.Closer, c optionally tells
+// the reader to close the io.Closer once it's been
+// read from.
+func NewFunc(r func() (io.ReadSeeker, error), c bool) *Postpone {
+	return &Postpone{nil, nil, nil, r, nil, false, c, false}
 }
 
 // NewFuncPre is identical to NewFunc except it takes
@@ -69,15 +74,22 @@ func NewFunc(r func() (io.ReadSeeker, error)) *Postpone {
 // Read or Seek call, it not only retreives the reader, 
 // it also preloads all of the data from the reader into 
 // an internal buffer, and discards the reader.
-func NewFuncPre(r func() (io.Reader, error)) *Postpone {
-	return &Postpone{nil, nil, r, nil, nil, false, false}
+//
+// If r returns an io.Closer, c optionally tells
+// the reader to close the io.Closer once it's been
+// read from.
+func NewFuncPre(r func() (io.Reader, error), c bool) *Postpone {
+	return &Postpone{nil, nil, r, nil, nil, false, c, false}
 }
 
 // NewReader takes an io.Reader and, upon the first
 // call to Read or Seek, preloads all available data
 // into an internal buffer, and discards the reader
-func NewReader(r io.Reader) *Postpone {
-	return &Postpone{r, nil, nil, nil, nil, false, false}
+//
+// If r is an io.Closer, c optionally tells
+// the reader to close r once it's been read from.
+func NewReader(r io.Reader, c bool) *Postpone {
+	return &Postpone{r, nil, nil, nil, nil, false, c, false}
 }
 
 // Load performs the same operation which would
@@ -127,6 +139,10 @@ func (p *Postpone) retreive() {
 			p.err = err
 			p.rs = bytes.NewReader(buf)
 		}
+		c, ok := r.(io.Closer)
+		if ok {
+			c.Close()
+		}
 	} else if p.getrs != nil {
 		p.rs, p.err = p.getrs()
 		p.getrs = nil
@@ -140,6 +156,10 @@ func (p *Postpone) retreive() {
 		} else {
 			buf, p.err = ioutil.ReadAll(p.r)
 			p.rs = bytes.NewReader(buf)
+			c, ok := p.r.(io.Closer)
+			if ok {
+				c.Close()
+			}
 		}
 	}
 	p.loaded = true

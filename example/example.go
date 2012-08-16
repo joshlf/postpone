@@ -25,7 +25,7 @@ func main() {
 	fmt.Println("files/NewReader:")
 	f, err := os.Open("files/NewReader")
 	if err == nil {
-		rdr = postpone.NewReader(f)
+		rdr = postpone.NewReader(f, true)
 		io.Copy(os.Stdout, rdr)
 	}
 	fmt.Println()

@@ -30,7 +30,7 @@ type Postpone struct {
 // NewFile takes a filepath, and returns an io.ReadSeeker.
 // This ReadSeeker will wait to open the file until the
 // first call to either Read or Seek.
-func NewFile(file string, close bool) *Postpone {
+func NewFile(file string) *Postpone {
 	return NewFunc(func() (io.ReadSeeker, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -128,7 +128,13 @@ func (p *Postpone) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (p *Postpone) retreive() {
-	if p.getr != nil {
+	if p.getrs != nil {
+		p.rs, p.err = p.getrs()
+		p.getrs = nil
+		if p.rs == nil {
+			p.bad = true
+		}
+	} else if p.getr != nil {
 		var r io.Reader
 		r, p.err = p.getr()
 		p.getr = nil
@@ -142,12 +148,6 @@ func (p *Postpone) retreive() {
 		c, ok := r.(io.Closer)
 		if ok {
 			c.Close()
-		}
-	} else if p.getrs != nil {
-		p.rs, p.err = p.getrs()
-		p.getrs = nil
-		if p.rs == nil {
-			p.bad = true
 		}
 	} else {
 		var buf []byte

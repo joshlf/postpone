@@ -5,7 +5,7 @@
 // The postpone package provides an io.ReadSeeker wrapper, and various functions
 // which handle readers with different postponements such as open on read and
 // preload to RAM
-package postpone
+package main
 
 import (
 	"bytes"
@@ -149,9 +149,11 @@ func (p *Postpone) retreive() {
 			p.err = err
 			p.rs = bytes.NewReader(buf)
 		}
-		c, ok := r.(io.Closer)
-		if ok {
-			c.Close()
+		if p.c {
+			c, ok := r.(io.Closer)
+			if ok {
+				c.Close()
+			}
 		}
 	} else {
 		var buf []byte
@@ -160,9 +162,11 @@ func (p *Postpone) retreive() {
 		} else {
 			buf, p.err = ioutil.ReadAll(p.r)
 			p.rs = bytes.NewReader(buf)
-			c, ok := p.r.(io.Closer)
-			if ok {
-				c.Close()
+			if p.c {
+				c, ok := p.r.(io.Closer)
+				if ok {
+					c.Close()
+				}
 			}
 		}
 	}

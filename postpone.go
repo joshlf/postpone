@@ -5,7 +5,7 @@
 // The postpone package provides an io.ReadSeeker wrapper, and various functions
 // which handle readers with different postponements such as open on read and
 // preload to RAM
-package main
+package postpone
 
 import (
 	"bytes"
